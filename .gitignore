@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+
+# Virtual environments
+.venv/
+.venv311/
+venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Local outputs / experiments
+outputs/
+runs/
+experiments/
+
+# Local datasets / media (large files)
+data/images/
+data/raw/
+data/interim/
+data/vids/
+data/debug_aug/
+*.cache
+*.mp4
+*.avi
+*.mov
+
+# Model weights / checkpoints
+weights/
+*.pt
+*.pth
+*.onnx

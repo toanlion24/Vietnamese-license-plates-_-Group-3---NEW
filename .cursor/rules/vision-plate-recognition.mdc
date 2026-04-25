@@ -1,0 +1,38 @@
+---
+description: Standards for VN license plate recognition project structure, notebooks, experiments, and safe coding.
+globs: "{src/**/*.py,scripts/**/*.py,configs/**/*.yaml,configs/**/*.yml,docs/**/*.ipynb,docs/**/*.md,README.md,.gitignore,.cursor/plans/**/*.md}"
+alwaysApply: false
+---
+
+# Vision - License Plate Recognition
+
+## Scope
+- Build a Vietnam license plate pipeline with clear stages: detect -> preprocess -> OCR -> postprocess -> evaluate.
+- Keep code modular under `src/`; avoid prototype logic in project root.
+
+## Conventions
+- Use Python 3.10+, snake_case file/function names, and typed function signatures for public APIs.
+- Do not hard-code absolute local paths; resolve from project root via `pathlib`.
+- Keep model-specific logic isolated:
+  - `src/detector/` for YOLO/DeepSolo.
+  - `src/ocr/` for EasyOCR/Tesseract/TrOCR.
+  - `src/pipeline/` to orchestrate end-to-end flow.
+
+## Data and Experiments
+- Store only small samples in git; keep heavy raw data out of repository.
+- Track each run with config, seed, metrics, and artifacts under `experiments/`.
+- Report OCR with CER, WER, and plate-level accuracy on a fixed held-out test set.
+
+## Notebook and Git Workflow
+- Keep `.ipynb` files lightweight and output-free; use them only for demos, reports, and EDA walkthroughs.
+- Put reusable or project-critical logic in `.py` files under `src/` or `scripts/`; do not let notebooks become the source of truth.
+- Before committing notebooks, run `python scripts/strip_ipynb_outputs.py docs/*.ipynb`.
+- In Git reviews, treat `.py` changes as primary implementation changes and `.ipynb` changes as presentation/demo changes.
+
+## Safety
+- Never commit secrets, personal machine paths, or private identifiers in configs.
+- When changing train/inference paths, preserve backward compatibility or document migration in `README.md`.
+
+## Output Language
+- For user-facing explanations, plans, and documentation, default to Vietnamese with full diacritics.
+- Only use non-diacritic Vietnamese or English when the user explicitly requests it, or when preserving exact code/CLI syntax.

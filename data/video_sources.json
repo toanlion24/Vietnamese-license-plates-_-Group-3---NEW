@@ -1,0 +1,10 @@
+{
+  "collections": {
+    "giao_thong_vn": {
+      "label": "Giao thông Việt Nam",
+      "path": "vid/ Giao thông Việt Nam",
+      "recursive": false,
+      "description": "Video cảnh giao thông Việt Nam (MP4 trong thư mục nguồn; dùng cho trích frame và inference). Đặt recursive=true nếu file nằm trong thư mục con."
+    }
+  }
+}

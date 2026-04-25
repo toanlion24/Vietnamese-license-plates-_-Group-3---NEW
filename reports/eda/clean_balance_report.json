@@ -1,0 +1,22 @@
+{
+  "images_total": 4578,
+  "images_kept": 4578,
+  "dropped": {
+    "missing_labels": 0,
+    "bad_images": 0,
+    "invalid_or_empty_labels": 0,
+    "invalid_label_lines": 0
+  },
+  "brightness_buckets_before_balance": {
+    "dark": 404,
+    "normal": 4143,
+    "bright": 31
+  },
+  "target_per_bucket_after_balance": 31,
+  "balanced_images_total": 93,
+  "outputs": {
+    "clean_manifest": "data\\manifests\\clean_images.txt",
+    "balanced_manifest": "data\\manifests\\balanced_images.txt"
+  },
+  "seed": 42
+}
