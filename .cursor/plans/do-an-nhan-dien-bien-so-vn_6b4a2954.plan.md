@@ -15,7 +15,7 @@ todos:
     content: Thực nghiệm 2 cấu hình DeepSolo (end-to-end) và DeepSolo+TrOCR (2-stage); train/infer/eval CER WER plate-level; báo cáo A/B và chốt pipeline cho Buổi 5
     status: pending
   - id: buoi-5-ocr-eval
-    content: Tích hợp pipeline OCR với YOLO, đánh giá OCR trên ≥200 ảnh biển số thực tế và phân tích lỗi
+    content: Tích hợp pipeline DeepSolo + TrOCR, so sánh baseline dự phòng, đánh giá CER WER plate-level latency trên ≥200 ảnh biển số thực tế và phân tích lỗi
     status: pending
   - id: buoi-6-demo
     content: Xây dựng demo (CLI/web/GUI) chạy được trên ảnh/video/webcam, kiểm thử với dữ liệu thực tế
@@ -262,35 +262,99 @@ isProject: false
 
 ## Buổi 5 – Tích hợp OCR & Đánh giá toàn hệ thống
 
-**Mục tiêu**: Hoàn thiện pipeline detect + OCR, đánh giá định lượng trên ≥ 200 ảnh thực tế.
+**Mục tiêu**: Hoàn thiện pipeline nhận diện biển số end-to-end dựa trên kết luận Buổi 4, ưu tiên **DeepSolo localize + TrOCR OCR** vì cấu hình này đang cho plate accuracy cao hơn trong smoke-test. Đánh giá lại trên **≥ 200 ảnh thực tế** bằng **CER, WER, plate-level accuracy và latency**, đồng thời giữ YOLO/EasyOCR hoặc YOLO/TrOCR làm baseline dự phòng nếu DeepSolo chưa ổn định.
+
+**Căn cứ từ Buổi 4**
+
+- Kết quả demo/smoke-test Buổi 4:
+  - Cấu hình A – DeepSolo end-to-end: CER `0.0469`, WER `0.3750`, plate accuracy `0.6250`, latency trung bình `83.75 ms`.
+  - Cấu hình B – DeepSolo + TrOCR: CER `0.0156`, WER `0.1250`, plate accuracy `0.8750`, latency trung bình `145.925 ms`.
+- Quyết định tạm thời: chọn **cấu hình B** làm pipeline chính cho Buổi 5 vì đọc đúng toàn biển tốt hơn, dù chậm hơn.
+- Hướng cải thiện ưu tiên: **crop/rectify vùng biển**, chuẩn hóa đầu vào TrOCR, hậu xử lý regex biển số VN, rồi mới tính đến fine-tune TrOCR.
+- Lưu ý quan trọng: số liệu Buổi 4 hiện là dữ liệu demo/smoke-test, nên Buổi 5 phải chạy lại trên test set thật, cố định và đủ lớn.
 
 **Việc cần làm**
 
-- Xây dựng **hàm tiền xử lý biển số** (sau khi crop từ YOLO):
-  - Convert sang grayscale.
-  - Resize về kích thước chuẩn (ví dụ 120×320 hoặc tương tự, giữ tỉ lệ).
-  - Thử các cách threshold (Otsu, adaptive) để làm rõ ký tự.
-  - (Tuỳ thời gian) Deskew nhẹ nếu biển bị nghiêng.
-- Tích hợp **EasyOCR/Tesseract**:
-  - Viết hàm `recognize_plate(cropped_plate) -> text`.
-  - Hậu xử lý chuỗi: chuyển uppercase, loại bỏ ký tự lạ, xóa khoảng trắng không cần thiết.
-  - Áp dụng regex/luật format biển số VN để sửa lỗi cơ bản (ví dụ thay `O` thành `0` ở những vị trí chỉ có digit).
-- Chuẩn bị **bộ test OCR**:
-  - Chọn ≥ 200 ảnh (hoặc patch biển số) thực tế, tự gán ground truth text.
-  - Viết script chạy pipeline full: YOLO detect → crop → preprocess → OCR.
-- Tính **chỉ số đánh giá**:
-  - Character accuracy: số ký tự đúng / tổng ký tự.
-  - Plate accuracy: số biển số đọc đúng hoàn toàn / tổng.
-- Phân tích lỗi OCR:
-  - Thống kê các loại lỗi: do detect sai, do ảnh mờ, do font lạ, do ánh sáng, do chữ quá bé.
-  - Lưu lại ví dụ điển hình (ảnh + text đúng + text dự đoán) để đưa vào báo cáo.
-- (Tùy chọn, nếu bám sát phiếu): thử Grad-CAM hoặc trực quan hoá feature YOLO cho vài case khó để minh họa mô hình học gì.
+- **Chốt data contract cho đánh giá**
+  - Tạo/kiểm tra manifest test cố định, tối thiểu gồm: `image_id`, `image_path`, `text_gt`, `bbox_gt` hoặc `polygon_gt` nếu có, `split=test`.
+  - Đảm bảo test set có ≥ 200 ảnh thực tế, không trùng cảnh/khung hình gần giống với train/val.
+  - Chuẩn hóa ground truth trước khi chấm: uppercase, bỏ ký tự phân cách không nhất quán, thống nhất cách ghi biển 1 dòng/2 dòng.
+  - Lưu manifest ở `data/manifests/buoi5_test.csv` hoặc đường dẫn tương đương; không hard-code đường dẫn máy cá nhân.
+
+- **Tuyến chính: DeepSolo localize + TrOCR**
+  - Dùng DeepSolo để lấy vùng biển số hoặc polygon text tốt nhất trên ảnh gốc.
+  - Nếu DeepSolo trả nhiều vùng, chọn vùng phù hợp bằng score, diện tích, tỉ lệ khung và vị trí hợp lý trong ảnh.
+  - Crop vùng biển từ bbox/polygon; nếu có polygon nghiêng thì ưu tiên perspective transform trước khi OCR.
+  - Đưa crop qua TrOCR bằng adapter `src/ocr/trocr_adapter.py`; lưu cả `text_raw`, `text_norm`, `ocr_score` để debug.
+  - Gắn pipeline vào `src/pipeline/infer_plate_pipeline.py` theo luồng: input frame → localize → crop/rectify → preprocess → OCR → postprocess → output JSON/CSV.
+
+- **Tiền xử lý crop trước OCR**
+  - Chuẩn hóa kích thước crop, giữ tỉ lệ để không làm méo ký tự.
+  - Thử các biến thể nhẹ: RGB/BGR đúng định dạng cho TrOCR, tăng tương phản, denoise nhẹ, padding quanh biển, deskew/perspective khi biển nghiêng.
+  - Không lạm dụng threshold nhị phân nếu dùng TrOCR, vì mô hình transformer thường cần ảnh crop còn đủ thông tin nét/chất liệu; threshold chỉ dùng như ablation riêng hoặc cho EasyOCR/Tesseract.
+  - Lưu 20–30 crop trung gian vào `outputs/buoi5/crops/` để kiểm tra bằng mắt.
+
+- **Hậu xử lý biển số Việt Nam**
+  - Dùng `src/postprocess/plate_rules.py` để normalize: uppercase, bỏ ký tự lạ, chuẩn hóa khoảng trắng/dấu gạch.
+  - Áp dụng sửa lỗi OCR thường gặp theo ngữ cảnh: `O ↔ 0`, `I/L ↔ 1`, `S ↔ 5`, `B ↔ 8` ở vị trí số/chữ phù hợp.
+  - Viết rõ regex/luật cho một số mẫu phổ biến: xe máy 2 dòng, ô tô 1 dòng, biển nền vàng/trắng/xanh nếu dữ liệu có.
+  - Lưu cả `pred_raw` và `pred_norm` để chứng minh hậu xử lý cải thiện hay làm sai.
+
+- **Baseline dự phòng để so sánh**
+  - Chạy lại YOLOv8 + TrOCR bằng `scripts/run_infer.py` nếu checkpoint YOLO từ Buổi 3 ổn định.
+  - Chạy YOLOv8 + EasyOCR nếu cần baseline nhanh, dễ demo, ít phụ thuộc model ngoài.
+  - Không để baseline thay thế tuyến chính Buổi 5, trừ khi DeepSolo không chạy được trên test thật; nếu đổi hướng phải ghi rõ lý do trong báo cáo.
+
+- **Chạy inference batch và xuất prediction**
+  - Đầu ra bắt buộc dạng CSV/JSON có các trường: `image_id`, `gt`, `pred_raw`, `pred_norm`, `bbox_xyxy` hoặc `polygon`, `det_score`, `ocr_score`, `latency_ms`, `error_type`.
+  - Với pipeline hiện có, có thể dùng hướng lệnh:
+    - `python scripts/run_infer.py --input-dir data/raw --output-json outputs/buoi5/predictions_trocr.json --detector-backend yolov8 --detector-model weights/yolov8_license_plate.pt --ocr-backend trocr --device cpu`
+    - `python scripts/eval_pipeline.py --pred-csv outputs/buoi5/pred_vs_gt.csv --report-json reports/buoi5_metrics.json --errors-csv reports/buoi5_error_records.csv`
+  - Nếu DeepSolo chạy ngoài repo chính, export prediction về cùng schema CSV để dùng chung script metric.
+
+- **Đánh giá định lượng**
+  - Metric chính:
+    - **CER**: tổng edit distance theo ký tự / tổng ký tự GT.
+    - **WER**: edit distance theo token / tổng token GT; với biển 1 chuỗi có thể coi cả biển là 1 token.
+    - **Plate-level accuracy**: `normalize(pred) == normalize(gt)`.
+    - **Mean latency ms**: thời gian trung bình cho detect/localize + preprocess + OCR + postprocess.
+  - Báo cáo thêm nếu có thời gian: detection hit rate, tỉ lệ crop hợp lệ, accuracy trước/sau hậu xử lý, phân bố lỗi theo loại biển/điều kiện ảnh.
+  - So sánh ít nhất 2 dòng kết quả: pipeline chính DeepSolo + TrOCR và baseline dự phòng tốt nhất.
+
+- **Phân tích lỗi có hệ thống**
+  - Gán nhãn lỗi cho từng case sai:
+    - `detect_miss`: không tìm thấy biển.
+    - `bad_crop`: tìm đúng vùng nhưng crop cắt mất ký tự hoặc quá nhiều nền.
+    - `rectify_error`: biển nghiêng/perspective làm OCR sai.
+    - `ocr_error`: crop đúng nhưng TrOCR đọc sai ký tự.
+    - `postprocess_helped`: OCR raw sai nhẹ nhưng rule sửa đúng.
+    - `postprocess_hurt`: rule sửa làm sai kết quả vốn đúng/gần đúng.
+    - `ambiguous_gt`: ảnh mờ hoặc GT không chắc chắn.
+  - Lưu 10–20 hard cases tiêu biểu gồm ảnh gốc, crop, GT, prediction, loại lỗi và ghi chú nguyên nhân.
+  - Từ error analysis, chọn 2–3 cải tiến nhỏ để làm ngay trước Buổi 6: tăng padding crop, lọc bbox sai, sửa regex, hoặc chọn model TrOCR khác.
+
+- **Kiểm thử nhanh và chất lượng mã**
+  - Kiểm tra các hàm metric trong `src/eval/metrics_plate.py` bằng vài case tự tạo: đúng hoàn toàn, sai 1 ký tự, rỗng prediction, khác format khoảng trắng.
+  - Kiểm tra pipeline không crash khi ảnh không có biển, OCR trả chuỗi rỗng, detector trả nhiều bbox.
+  - Log latency theo stage để biết Buổi 6 cần tối ưu phần nào.
+  - Giữ logic tái sử dụng trong `src/`; notebook chỉ dùng để minh họa kết quả và báo cáo.
 
 **Deliverables**
 
-- Pipeline code end-to-end chạy được trên tập test.
-- Kết quả đánh giá OCR với bảng số liệu rõ ràng.
-- Bộ ảnh/lỗi tiêu biểu để dùng trong phần “Error analysis”.
+- Pipeline end-to-end chạy được trên ≥ 200 ảnh test thật, ưu tiên cấu hình **DeepSolo + TrOCR**.
+- File prediction chuẩn hóa: `outputs/buoi5/pred_vs_gt.csv` hoặc JSON tương đương.
+- Báo cáo metric: `reports/buoi5_metrics.json` kèm bảng CER, WER, plate accuracy, latency.
+- File lỗi chi tiết: `reports/buoi5_error_records.csv` có `error_type` để làm error analysis.
+- Thư mục hard cases: `outputs/buoi5/hard_cases/` gồm ảnh gốc/crop và ghi chú GT vs prediction.
+- Tài liệu ngắn `reports/buoi-5-tich-hop-ocr-va-danh-gia-toan-he-thong.md` tóm tắt pipeline đã chọn, lệnh chạy, kết quả, lỗi chính và việc cần làm cho Buổi 6.
+- Notebook học và xem kết quả: `docs/buoi-5-tich-hop-ocr-va-danh-gia-toan-he-thong.ipynb`.
+- Checklist quyết định cuối buổi:
+  - [ ] Test set ≥ 200 ảnh đã cố định.
+  - [ ] Pipeline chính DeepSolo + TrOCR chạy hết test set.
+  - [ ] Có ít nhất một baseline dự phòng để so sánh.
+  - [ ] Có CER/WER/plate accuracy/latency.
+  - [ ] Có 10–20 hard cases đã phân loại lỗi.
+  - [ ] Chốt cấu hình dùng cho demo Buổi 6.
 
 ## Buổi 6 – Demo & Giao diện người dùng
 
