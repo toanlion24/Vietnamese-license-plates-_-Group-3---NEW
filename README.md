@@ -68,6 +68,39 @@ Evaluate predictions:
 python scripts/eval_pipeline.py --pred-csv reports/pred_vs_gt.csv
 ```
 
+Phân tích lỗi theo **ký tự + vùng** (tỉnh / chữ / serial) từ CSV prediction (Buổi 4):
+
+```bash
+python scripts/export_char_errors_csv.py --pred-csv outputs/buoi4/deepsolo_e2e_predictions.csv --output-csv reports/char_errors_by_region.csv
+```
+
+## Dữ liệu tổng hợp + chạy metric có số thật (không cần ảnh ngoài Git)
+
+Sinh ảnh biển + `data/test_manifest.csv`, rồi đánh giá A/B (EasyOCR vs TrOCR) với inference thật:
+
+```bash
+python scripts/generate_synthetic_plate_dataset.py
+python scripts/run_buoi4_manifest_inference.py --manifest data/test_manifest.csv --detector-backend dummy --device cpu --run-metrics --metrics-json reports/buoi4_ab_metrics.json --report-md reports/buoi4_ab_run_synthetic.md
+```
+
+Chi tiết và ý nghĩa báo cáo: [`data/synthetic_plates/README.md`](data/synthetic_plates/README.md).
+
+(Lần đầu TrOCR/EasyOCR có thể tải model; detector `dummy` chỉ để lấy vùng crop trung tâm — với ảnh thật nên dùng `yolov8`.)
+
+Ghép `data/test_manifest.csv` từ thư mục ảnh + CSV/JSON hoặc file `.txt` nhãn: [`scripts/build_test_manifest_from_folder.py`](scripts/build_test_manifest_from_folder.py) — xem [`data/manifests/README.md`](data/manifests/README.md).
+
+## Đối chiếu đề tài, Buổi 4 đầy đủ, và bảo vệ
+
+- **Checklist + ma trận yêu cầu + câu hỏi hội đồng:** [`docs/KIEM_TRA_DE_TAI_VA_HOI_DONG.md`](docs/KIEM_TRA_DE_TAI_VA_HOI_DONG.md)
+- **Kiểm tra nhanh** (compile, weight, manifest, link tới tài liệu trên):
+
+```bash
+python scripts/check_de_tai_readiness.py
+```
+
+- **Đánh giá A/B có manifest + GT** (YOLOv8 + EasyOCR vs YOLOv8 + TrOCR; có thể nhập CSV DeepSolo thay cho một hoặc hai nhánh): `scripts/run_buoi4_manifest_inference.py` — xem docstring script.
+- **Fine-tune TrOCR:** `scripts/train_trocr.py` và `configs/trocr/finetune_defaults.json`.
+
 Run Buổi 4 A/B comparison after exporting both prediction CSV files:
 
 ```bash

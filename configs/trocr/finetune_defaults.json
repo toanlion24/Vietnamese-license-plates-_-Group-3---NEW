@@ -1,0 +1,13 @@
+{
+  "learning_rate": 0.00015,
+  "weight_decay": 0.01,
+  "num_train_epochs": 10,
+  "per_device_train_batch_size": 4,
+  "gradient_accumulation_steps": 2,
+  "warmup_ratio": 0.05,
+  "lr_scheduler_type": "linear",
+  "save_total_limit": 2,
+  "bf16": false,
+  "fp16": false,
+  "comment": "learning_rate 1.5e-4 cao hơn baseline thường gặp 5e-5; giảm xuống 5e-5-1e-4 nếu loss dao động hoặc không hội tụ."
+}

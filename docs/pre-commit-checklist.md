@@ -10,3 +10,9 @@ git diff --stat
 ```
 
 Trước khi commit, kiểm tra nhanh: notebook không còn output nặng, code `.py` compile được, và `git diff` chỉ có đúng file bạn muốn đưa lên.
+
+Tùy chọn — sanity check đề tài (weight, manifest test, tài liệu hội đồng):
+
+```powershell
+.\.venv311\Scripts\python.exe scripts\check_de_tai_readiness.py
+```

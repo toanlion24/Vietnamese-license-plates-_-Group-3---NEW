@@ -21,7 +21,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--manifest-csv",
         type=Path,
-        default=Path("data/manifests/buoi4_test.csv"),
+        default=Path("data/manifests/buoi4_deepsolo.example.csv"),
         help="CSV with image_id, image_path, text_gt and bbox_xyxy or polygon.",
     )
     parser.add_argument(

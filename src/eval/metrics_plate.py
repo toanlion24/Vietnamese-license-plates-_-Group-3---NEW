@@ -28,6 +28,13 @@ def _levenshtein(a: Sequence[object], b: Sequence[object]) -> int:
     return prev[-1]
 
 
+def levenshtein_chars(a: str, b: str) -> int:
+    """Character edit distance on *normalized* plate strings."""
+    ca = normalize_plate_text(a)
+    cb = normalize_plate_text(b)
+    return _levenshtein(list(ca), list(cb))
+
+
 def cer(records: list[EvalRecord]) -> float:
     total_dist = 0
     total_chars = 0

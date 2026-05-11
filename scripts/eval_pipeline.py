@@ -20,7 +20,7 @@ def parse_args() -> argparse.Namespace:
 
 def load_records(pred_csv: Path) -> list[EvalRecord]:
     rows: list[EvalRecord] = []
-    with pred_csv.open("r", encoding="utf-8") as fp:
+    with pred_csv.open("r", encoding="utf-8-sig", newline="") as fp:
         reader = csv.DictReader(fp)
         for row in reader:
             gt = row.get("gt", "")

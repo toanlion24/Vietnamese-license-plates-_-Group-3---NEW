@@ -5,3 +5,4 @@ easyocr
 transformers
 torch
 pillow
+accelerate>=1.1.0

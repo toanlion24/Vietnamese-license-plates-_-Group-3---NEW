@@ -1,0 +1,2 @@
+image_id,image_path,bbox_xyxy,gt,split
+example_001,data/images/raw/REPLACE_ME.jpg,"120,80,310,140",51H12345,test

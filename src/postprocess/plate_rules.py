@@ -20,3 +20,32 @@ def repair_common_ocr_errors(text: str) -> str:
         normalized = normalized[:2].replace("O", "0") + normalized[2:]
     return normalized
 
+
+def repair_tail_digit_confusions(text: str) -> str:
+    """Sửa ký tự dễ nhầm ở phần sau chữ cái tỉnh (index >= 3). Đầu vào nên đã normalize."""
+    s = normalize_plate_text(text)
+    if len(s) < 4:
+        return s
+    head, tail = s[:3], s[3:]
+    trans = str.maketrans(
+        {
+            "I": "1",
+            "l": "1",
+            "L": "1",
+            "|": "1",
+            "O": "0",
+            "o": "0",
+            "S": "5",
+            "s": "5",
+            "B": "8",
+        }
+    )
+    return head + tail.translate(trans)
+
+
+def postprocess_plate_text(text: str, *, aggressive_tail: bool = False) -> str:
+    base = repair_common_ocr_errors(text)
+    if aggressive_tail:
+        return repair_tail_digit_confusions(base)
+    return base
+

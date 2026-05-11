@@ -1,0 +1,2 @@
+image_id,image_path,gt,ambiguous_gt
+plate_sample_001,data/debug_aug/your_image.jpg,51H12345,false

@@ -1,0 +1,16 @@
+image_id,image_path,gt,ambiguous_gt
+synth_001,data/synthetic_plates/synth_001.png,51H12345,false
+synth_002,data/synthetic_plates/synth_002.png,30A56789,false
+synth_003,data/synthetic_plates/synth_003.png,59G11234,false
+synth_004,data/synthetic_plates/synth_004.png,43B67890,false
+synth_005,data/synthetic_plates/synth_005.png,29C24680,false
+synth_006,data/synthetic_plates/synth_006.png,61D13579,false
+synth_007,data/synthetic_plates/synth_007.png,50F99881,false
+synth_008,data/synthetic_plates/synth_008.png,72A45678,false
+synth_009,data/synthetic_plates/synth_009.png,14K10203,false
+synth_010,data/synthetic_plates/synth_010.png,88L99999,false
+synth_011,data/synthetic_plates/synth_011.png,65M44444,false
+synth_012,data/synthetic_plates/synth_012.png,92N12345,false
+synth_013,data/synthetic_plates/synth_013.png,37P88888,false
+synth_014,data/synthetic_plates/synth_014.png,18R24680,false
+synth_015,data/synthetic_plates/synth_015.png,41S13579,false

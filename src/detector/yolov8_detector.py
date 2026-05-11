@@ -16,15 +16,26 @@ class YoloV8PlateDetector:
         model_path: str | Path,
         conf_threshold: float = 0.25,
         class_name: str = "license_plate",
+        *,
+        iou: float = 0.45,
+        imgsz: int = 640,
     ) -> None:
         if YOLO is None:
             raise ImportError("ultralytics is required. Install with: pip install ultralytics")
         self.model = YOLO(str(model_path))
         self.conf_threshold = conf_threshold
         self.class_name = class_name
+        self.iou = iou
+        self.imgsz = imgsz
 
     def predict(self, frame_data: FrameData) -> list[Detection]:
-        results = self.model.predict(frame_data.frame, conf=self.conf_threshold, verbose=False)
+        results = self.model.predict(
+            frame_data.frame,
+            conf=self.conf_threshold,
+            iou=self.iou,
+            imgsz=self.imgsz,
+            verbose=False,
+        )
         detections: list[Detection] = []
         for result in results:
             if result.boxes is None:

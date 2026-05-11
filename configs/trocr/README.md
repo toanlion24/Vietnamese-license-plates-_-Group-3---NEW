@@ -74,6 +74,25 @@ Sau đó chạy:
 python scripts/run_buoi4_experiments.py --config-a-csv outputs/buoi4/deepsolo_e2e_predictions.csv --config-b-csv outputs/buoi4/deepsolo_trocr_predictions.csv
 ```
 
+## 8) Fine-tune TrOCR và learning rate
+
+File mặc định: [`finetune_defaults.json`](finetune_defaults.json). `learning_rate` đang đặt **1.5e-4**, cao hơn mức thường dùng làm điểm xuất phát (**5e-5**) cho fine-tune TrOCR. Có thể **tăng thêm** (vd. `2e-4`…`3e-4`) bằng `--learning-rate` nếu loss giảm ổn và không phát tán; nếu loss nhảy hoặc CER val xấu đi thì **giảm** về khoảng `5e-5`–`1e-4`.
+
+Chuẩn bị CSV train (cột ảnh crop + text nhãn), ví dụ `image_path,gt` hoặc `path,text`:
+
+```bash
+pip install -r requirements.txt
+python scripts/train_trocr.py --train-csv data/trocr_train.csv --output-dir experiments/trocr_ft_run1
+```
+
+Ghi đè learning rate:
+
+```bash
+python scripts/train_trocr.py --train-csv data/trocr_train.csv --learning-rate 2.5e-4
+```
+
+Inference sau khi train: truyền thư mục output vào `--trocr-model` (local path) trong `run_infer.py`.
+
 ## 7) Khi nào cần fine-tune?
 
 Chỉ fine-tune TrOCR nếu baseline inference trên crop thật còn kém và nhóm có đủ dữ liệu crop + text. Nếu chưa đủ dữ liệu, ưu tiên:
