@@ -1,0 +1,12 @@
+# YOLO training configuration for full images
+
+path: D:\ComputerVisionNew\data\yolo_dataset_full
+train: images/train.txt
+val: images/train.txt  # Use same for now since we have limited data
+test: images/train.txt
+
+names:
+  0: license_plate
+
+# Training settings
+nc: 1

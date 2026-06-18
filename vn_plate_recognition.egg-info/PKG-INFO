@@ -1,0 +1,5 @@
+Metadata-Version: 2.4
+Name: vn-plate-recognition
+Version: 0.1.0
+Summary: Vietnam License Plate Recognition Pipeline
+Requires-Python: >=3.10

@@ -1,0 +1,74 @@
+# YOLOv8n fine-tune config for Vietnam license plate detection
+# Ultralytics train settings — override via CLI args or this YAML
+
+# ── Model ────────────────────────────────────────────────────────────────────
+# Pretrained weights: yolov8n.pt (nano), yolov8s.pt (small), yolov8m.pt (medium)
+# Using nano for fast iteration; switch to 'yolov8s.pt' for higher accuracy
+model: yolov8n.pt
+
+# ── Data ─────────────────────────────────────────────────────────────────────
+# Points to the YOLO-format dataset root (relative to project root)
+data: data/data.yaml
+
+# ── Training hyperparameters ─────────────────────────────────────────────────
+# ── Image augmentation (light – preserve plate readability)
+hsv_h: 0.015   # HSV-Hue augmentation
+hsv_s: 0.7     # HSV-Saturation
+hsv_v: 0.4     # HSV-Value
+degrees: 10.0  # Rotation (+/- deg)
+translate: 0.1  # Translation (+/- fraction)
+scale: 0.5     # Scale (+/- gain)
+shear: 2.0     # Shear (+/- deg)
+perspective: 0.0001  # Perspective (+/- fraction, range 0-0.0005)
+flipud: 0.0    # No vertical flip (plates are always horizontal-ish)
+fliplr: 0.5    # Random horizontal flip
+mosaic: 1.0    # Mosaic augmentation
+mixup: 0.1     # MixUp augmentation (light)
+copy_paste: 0.0  # No copy-paste
+
+# ── Learning schedule ──────────────────────────────────────────────────────────
+epochs: 50
+patience: 10    # Early stop patience
+batch: 16       # Adjust to your GPU VRAM (16 = ~4 GB, 32 = ~8 GB)
+imgsz: 640      # Input image size
+save_period: 5  # Save checkpoint every N epochs
+
+# ── Optimizer ────────────────────────────────────────────────────────────────
+optimizer: AdamW   # AdamW or SGD
+lr0: 0.001         # initial learning rate
+lrf: 0.01          # final OneCycleLR lr = lr0 * lrf
+momentum: 0.937    # SGD momentum
+weight_decay: 0.0005
+warmup_epochs: 3.0
+warmup_momentum: 0.8
+warmup_bias_lr: 0.1
+
+# ── Loss weights ──────────────────────────────────────────────────────────────
+box: 7.5   # box loss gain
+cls: 0.5   # cls loss gain
+dfl: 1.5   # dfl loss gain
+
+# ── Validation / inference ─────────────────────────────────────────────────────
+val: true
+plots: true
+save: true
+save_json: true
+save_hybrid: false
+conf: null
+iou: 0.7
+max_det: 10    # max detections per image
+
+# ── Hardware ──────────────────────────────────────────────────────────────────
+# device: 0          # single GPU
+device: cpu          # fallback to CPU (slow, for testing only)
+workers: 4           # dataloader workers
+amp: true            # mixed precision (disable on CPU)
+pretrained: true
+verbose: true
+deterministic: true  # reproducible results
+
+# ── Output ───────────────────────────────────────────────────────────────────
+project: experiments/detector
+name: yolov8n_finetune
+exist_ok: true
+resume: false

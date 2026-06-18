@@ -1,25 +1,25 @@
 ---
 name: do-an-nhan-dien-bien-so-vn
-overview: "Kế hoạch chi tiết 7 buổi cho đồ án thị giác máy tính: phát hiện và OCR biển số xe Việt Nam; baseline YOLO + OpenCV; Buổi 4 thực nghiệm DeepSolo + TrOCR (2 cấu hình), có demo và báo cáo hoàn chỉnh."
+overview: "Kế hoạch chi tiết 7 buổi cho đồ án thị giác máy tính: phát hiện và OCR biển số xe Việt Nam; baseline YOLO + OpenCV; Buổi 4 fine-tune Qwen2-VL-2B-Instruct với Unsloth + QLoRA, có demo và báo cáo hoàn chỉnh."
 todos:
   - id: buoi-1-planning
     content: Hoàn thành mô tả bài toán, khảo sát công nghệ, vẽ pipeline, phân công và timeline 7 buổi
-    status: pending
+    status: completed
   - id: buoi-2-data
     content: Thu thập và gán nhãn dữ liệu biển số VN, viết script EDA và tiền xử lý/augment cơ bản
-    status: pending
+    status: completed
   - id: buoi-3-baseline-detector
     content: Cấu hình project YOLO và train mô hình detection baseline, chạy inference thử trên ảnh test
-    status: pending
-  - id: buoi-4-experiments
-    content: Thực nghiệm 2 cấu hình DeepSolo (end-to-end) và DeepSolo+TrOCR (2-stage); train/infer/eval CER WER plate-level; báo cáo A/B và chốt pipeline cho Buổi 5
-    status: pending
-  - id: buoi-5-ocr-eval
-    content: Tích hợp pipeline DeepSolo + TrOCR, so sánh baseline dự phòng, đánh giá CER WER plate-level latency trên ≥200 ảnh biển số thực tế và phân tích lỗi
-    status: pending
+    status: completed
+  - id: buoi-4-finetune-qwen
+    content: Fine-tune Qwen2-VL-2B-Instruct với Unsloth + QLoRA trên Google Colab, lưu checkpoint lên Hugging Face
+    status: completed
+  - id: buoi-5-pipeline-integration
+    content: Tích hợp pipeline YOLOv8n + Qwen2-VL, đánh giá CER WER plate-level latency trên ≥200 ảnh biển số thực tế và phân tích lỗi
+    status: completed
   - id: buoi-6-demo
     content: Xây dựng demo (CLI/web/GUI) chạy được trên ảnh/video/webcam, kiểm thử với dữ liệu thực tế
-    status: pending
+    status: completed
   - id: buoi-7-report
     content: Hoàn thiện báo cáo, slide, diễn tập bảo vệ và đóng gói mã nguồn + hướng dẫn chạy
     status: pending
@@ -30,357 +30,380 @@ isProject: false
 
 ## Mục tiêu tổng thể
 
-- Xây dựng hệ thống nhận diện biển số xe Việt Nam gồm 2 phần: **phát hiện vùng biển số (detection)** và **nhận dạng ký tự (OCR)**.
+- Xây dựng hệ thống nhận diện biển số xe Việt Nam gồm 2 phần: **phát hiện vùng biển số (detection)** và **trích xuất ký tự (OCR/VLM)**.
 - Đạt **độ chính xác OCR ≥ 85%** trên **≥ 200 ảnh biển số thực tế** (không dùng để train).
 - Có **demo** chạy được trên ảnh/video/webcam, kèm **báo cáo và slide** đầy đủ.
 
 ## Công nghệ & tổ chức mã nguồn
 
+### Stack công nghệ chính
+
+| Thành phần | Công nghệ / Công cụ |
+|------------|---------------------|
+| Nhận diện (Detection) | YOLOv8 Nano (YOLOv8n) |
+| Trích xuất (OCR/VLM) | Qwen2-VL-2B-Instruct |
+| Fine-tuning | Unsloth (Tối ưu hóa VRAM/Tốc độ) |
+| Kỹ thuật huấn luyện | QLoRA (4-bit quantization) |
+| Giao diện (UI) | Streamlit |
+| Môi trường | Google Colab, Hugging Face |
+
+### Ngôn ngữ & Thư viện
+
 - **Ngôn ngữ**: Python.
 - **Thư viện chính**:
-  - Detection: YOLOv8 (Ultralytics) hoặc YOLOv5 (chọn 1, ưu tiên YOLOv8n/s).
-  - OCR: EasyOCR (ưu tiên) hoặc Tesseract + `pytesseract`.
-  - Nhánh thực nghiệm Buổi 4: DeepSolo (text spotting) + TrOCR (so sánh A/B với baseline).
-  - Xử lý ảnh: OpenCV, NumPy.
-  - Phân tích & demo: Matplotlib/Seaborn, Streamlit/Gradio hoặc OpenCV GUI.
-- **Cấu trúc thư mục gợi ý**:
-  - `data/raw/` – ảnh gốc thu thập.
-  - `data/labels/` – file nhãn YOLO cho biển số.
-  - `data/splits/` – danh sách train/val/test.
-  - `experiments/` – log huấn luyện, checkpoint mô hình.
-  - `src/detector/` – mã train/inference YOLO.
-  - `src/ocr/` – mã pipeline OCR.
-  - `src/preprocess/` – tiền xử lý ảnh & biển số.
-  - `src/app/` – mã demo (CLI/GUI).
-  - `notebooks/` – EDA, thử nghiệm nhanh.
+  - Detection: YOLOv8 (Ultralytics)
+  - OCR/VLM: Qwen2-VL-2B-Instruct (fine-tuned với Unsloth)
+  - Fine-tuning: Unsloth, bitsandbytes, peft, trl
+  - Xử lý ảnh: OpenCV, NumPy, PIL
+  - Phân tích & demo: Matplotlib/Seaborn, Streamlit
 
-## Kiến trúc đề xuất (production-friendly cho đồ án)
+### Cấu trúc thư mục
 
-### 1) Kiến trúc phân lớp
+```
+data/
+  raw/                    # Ảnh gốc thu thập
+  labels/                 # File nhãn YOLO cho biển số
+  splits/                 # Danh sách train/val/test
+  manifests/              # Manifest cho OCR training
+  crops/                  # Crop biển số cho VLM training
+experiments/
+  yolo/                   # Log huấn luyện, checkpoint YOLO
+  qwen_vl/                # Checkpoint Qwen2-VL fine-tuned
+src/
+  io/                     # Đọc ảnh, video, webcam
+  detector/               # YOLO detector adapter
+  ocr/                    # Qwen2-VL adapter
+  preprocess/             # Tiền xử lý ảnh & biển số
+  postprocess/            # Hậu xử lý regex/luật biển số VN
+  pipeline/               # Pipeline tổng hợp
+  eval/                   # Metrics, error analysis
+  app/                    # Demo CLI/GUI
+  utils/                  # Utilities
+scripts/
+  train_yolo.py           # Train YOLO detector
+  train_qwen.py           # Fine-tune Qwen2-VL (chạy trên Colab)
+  run_inference.py        # Inference batch
+  eval_pipeline.py        # Đánh giá pipeline
+configs/
+  yolo/                   # Cấu hình YOLO
+  qwen_vl/                # Cấu hình QLoRA, prompt
+  pipeline/               # Ngưỡng, regex, voting
+reports/                  # Báo cáo từng buổi
+notebooks/                # EDA, thử nghiệm
+```
 
-- **Ingestion layer** (`src/io/`):
-  - Nhận input từ ảnh, video, webcam.
-  - Chuẩn hóa frame về định dạng chung (`BGR np.ndarray` + metadata).
-- **Perception layer**:
-  - **Plate localization** (`src/detector/`): YOLOv8 hoặc DeepSolo (tuong ung buoi 4).
-  - **Plate normalization** (`src/preprocess/`): crop, rectify perspective, denoise, threshold.
-  - **Text recognition** (`src/ocr/`): EasyOCR/Tesseract/TrOCR.
-- **Post-processing layer** (`src/postprocess/`):
-  - Chuẩn hóa text (uppercase, bo ky tu la).
-  - Regex + logic sua loi theo format bien so VN.
-  - Multi-frame voting (neu video/webcam) de tang do on dinh.
-- **Evaluation layer** (`src/eval/`):
-  - Detection metrics (mAP).
-  - OCR metrics (CER, WER, plate-level accuracy).
-  - Error analysis va luu hard cases.
-- **Application layer** (`src/app/`):
-  - CLI cho batch inference.
-  - API/GUI demo (Streamlit/Gradio/OpenCV GUI).
-  - Logging, latency report.
+## Kiến trúc Pipeline
 
-### 2) Data contract giua cac module
+### 1) Pipeline xử lý 4 giai đoạn
 
-- Detector output:
-  - `image_id`, `bbox_xyxy`, `score`, `class_name`.
-- OCR input:
-  - `plate_crop`, `image_id`, `det_score`.
-- OCR output:
-  - `text_raw`, `text_norm`, `ocr_score`.
-- Final output:
-  - `plate_text`, `bbox`, `confidence`, `source_frame`, `timestamp`.
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│  DETECTION  │───▶│  CROPPING   │───▶│   OCR/VLM   │───▶│ POST-PROCESS│
+│  YOLOv8n     │    │  Auto-crop  │    │ Qwen2-VL-2B │    │ Regex+Rules │
+└─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
+```
 
-### 3) Cau truc thu muc de xay dung lau dai
+1. **Detection (Nhận diện)**: YOLOv8n quét khung hình, xác định tọa độ bounding box của biển số.
+2. **Cropping (Cắt ảnh)**: Tự động cắt vùng ảnh chứa biển số, loại bỏ nhiễu từ môi trường xung quanh.
+3. **OCR/VLM (Trích xuất)**: Qwen2-VL-2B-Instruct (fine-tuned) đọc và chuyển đổi hình ảnh biển số thành văn bản.
+4. **Post-processing (Xử lý hậu kỳ)**: Lọc chuỗi văn bản, loại ký tự rác, chuẩn hóa format theo quy chuẩn biển số VN.
 
-- `configs/`
-  - `detector/` (yolo/deepsolo yaml)
-  - `ocr/` (easyocr/trocr config)
-  - `pipeline/` (nguong score, regex, voting)
-- `data/`
-  - `raw/`, `interim/`, `processed/`, `labels/`, `splits/`
-- `src/`
-  - `io/`, `detector/`, `preprocess/`, `ocr/`, `postprocess/`, `pipeline/`, `eval/`, `app/`, `utils/`
-- `scripts/`
-  - `train_detector.py`, `run_infer.py`, `eval_pipeline.py`, `build_manifest.py`
-- `experiments/`
-  - `<date>_<model>_<setting>/metrics.json`, `predictions.csv`, `artifacts/`
-- `reports/`
-  - `ablation_deepsolo_trocr.md`, `error-analysis.md`
+### 2) Data contract giữa các module
 
-### 4) Luong chay chinh
+- **Detector output**: `image_id`, `bbox_xyxy`, `score`, `class_name`
+- **OCR input**: `plate_crop` (PIL Image), `image_id`, `det_score`
+- **OCR output**: `text_raw`, `text_norm`, `ocr_score`
+- **Final output**: `plate_text`, `bbox`, `confidence`, `source_frame`, `timestamp`
 
-- **Train**:
-  - `scripts/build_manifest.py` -> `scripts/train_detector.py` -> `scripts/eval_pipeline.py`.
-- **Inference batch**:
-  - Input folder -> detect -> preprocess -> OCR -> postprocess -> JSON/CSV output.
-- **Realtime**:
-  - Webcam stream -> detect moi N frame -> track/vote -> overlay bbox + text.
+### 3) Non-functional requirements
 
-### 5) Non-functional requirements
+- **Reproducibility**: Mỗi lần train lưu `config + seed + git_sha`
+- **Observability**: Log latency từng stage (detect/crop/ocr/postprocess)
+- **Maintainability**: Mỗi module có unit test cho hàm core
+- **Safety**: Không commit dữ liệu nhạy cảm, không lưu biển số thật trong public report
 
-- Reproducibility: moi lan train luu `config + seed + git_sha`.
-- Observability: log latency tung stage (detect/preprocess/ocr/postprocess).
-- Maintainability: moi module co unit test cho ham core.
-- Safety: khong commit du lieu nhay cam, khong luu bien so that o public report.
+## Chuẩn bị Dataset cho Fine-tuning Qwen2-VL
+
+### Định dạng training data
+
+Qwen2-VL yêu cầu định dạng conversation:
+
+```json
+{
+  "messages": [
+    {"role": "user", "content": "<image>Đọc biển số xe trong ảnh"}, 
+    {"role": "assistant", "content": "30G1-12345"}
+  ]
+}
+```
+
+### Cấu trúc manifest cho OCR training
+
+```csv
+image_id,image_path,text_gt,split
+plate_0001,/path/to/crops/plate_0001.jpg,30G112345,train
+plate_0002,/path/to/crops/plate_0002.jpg,51K123456,train
+...
+```
 
 ## Buổi 1 – Khởi động & Lập kế hoạch chi tiết
 
-**Mục tiêu**: Hiểu rõ bài toán, chốt stack công nghệ, pipeline, kế hoạch 7 buổi và phân công.
+**Mục tiêu**: Hiểu rõ bài toán, chốt stack công nghệ (YOLOv8n + Qwen2-VL-2B-Instruct + Unsloth), pipeline, kế hoạch 7 buổi và phân công.
 
 **Việc cần làm**
 
 - Viết mô tả bài toán ngắn gọn (1–2 trang):
-  - Bối cảnh ứng dụng (bãi gửi xe, camera đường phố…).
-  - Input: ảnh/video/webcam chứa xe.
-  - Output: chuỗi biển số + bounding box, có thể nhiều biển số/ảnh.
-  - Chỉ số đánh giá: mAP cho detection; character accuracy, plate accuracy cho OCR.
+  - Bối cảnh ứng dụng (bãi gửi xe, camera đường phố…)
+  - Input: ảnh/video/webcam chứa xe
+  - Output: chuỗi biển số + bounding box
+  - Chỉ số đánh giá: mAP cho detection; CER, WER, plate accuracy cho OCR/VLM
+
 - Khảo sát nhanh các hướng kỹ thuật:
-  - So sánh YOLOv5 vs YOLOv8 (tài liệu, code ví dụ) và chốt 1 mô hình.
-  - Thử code ví dụ YOLO pre-trained trên COCO để chắc chắn môi trường chạy được.
-  - Thử EasyOCR/Tesseract trên vài ảnh biển số mẫu (có thể là biển số nước ngoài) để kiểm tra cài đặt.
+  - YOLOv8n cho detection (đã chọn)
+  - Qwen2-VL-2B-Instruct cho OCR (thay TrOCR)
+  - Unsloth để fine-tune nhanh hơn (tiết kiệm VRAM)
+  - Thử chạy mô hình pre-trained trên vài ảnh mẫu để kiểm tra môi trường
+
 - Phân tích **format biển số Việt Nam**:
-  - Biển 1 dòng/2 dòng, nền trắng/vàng/xanh.
-  - Viết ra vài regex/luật cơ bản cho biển số (ví dụ cho xe máy, ô tô).
-- Vẽ sơ đồ **pipeline tổng thể** (trong slide/notebook):
-  - Ảnh/video → YOLO detect biển số → crop → tiền xử lý (gray, threshold, resize, deskew) → OCR → hậu xử lý regex/đa khung hình.
-- Lập **timeline 7 buổi** (gần giống plan này) và phân công người phụ trách:
-  - Thành viên A: dữ liệu + gán nhãn.
-  - Thành viên B: mô hình YOLO.
-  - Thành viên C: OCR + pipeline.
-  - Cả nhóm: demo + báo cáo.
+  - Biển 1 dòng/2 dòng, nền trắng/vàng/xanh
+  - Viết ra regex/luật cơ bản cho biển số (xe máy, ô tô)
+
+- Vẽ sơ đồ **pipeline tổng thể**:
+  - Ảnh/video → YOLOv8n detect → crop → Qwen2-VL OCR → postprocess regex
+
+- Lập **timeline 7 buổi** và phân công:
+  - Thành viên A: dữ liệu + gán nhãn
+  - Thành viên B: mô hình YOLO
+  - Thành viên C: Fine-tune Qwen2-VL + pipeline OCR
+  - Cả nhóm: demo + báo cáo
 
 **Deliverables**
 
-- Tài liệu mô tả bài toán & yêu cầu.
-- Sơ đồ pipeline (ảnh vẽ hoặc slide).
-- Ghi chú phân công nhiệm vụ và lịch làm việc.
-- Tai lieu trien khai chi tiet de hoc lai tung buoc: `reports/buoi-1-khoi-dong-va-lap-ke-hoach-chi-tiet.md`.
+- Tài liệu mô tả bài toán & yêu cầu
+- Sơ đồ pipeline (YOLOv8n → Qwen2-VL-2B-Instruct)
+- Ghi chú phân công nhiệm vụ và lịch làm việc
+- Tài liệu triển khai chi tiết: `reports/buoi-1-khoi-dong-va-lap-ke-hoach-chi-tiet.md`
 
 ## Buổi 2 – Thu thập & Tiền xử lý dữ liệu
 
-**Mục tiêu**: Có tập dữ liệu bước đầu, đã gán nhãn một phần và có script EDA + tiền xử lý cơ bản.
+**Mục tiêu**: Có tập dữ liệu bước đầu, đã gán nhãn và có script EDA + tiền xử lý cơ bản.
 
 **Việc cần làm**
 
 - **Thu thập dữ liệu**:
-  - Tự chụp ảnh/đoạn video xe máy, ô tô trên đường hoặc trong bãi giữ xe (đa dạng ánh sáng, góc, khoảng cách).
-  - Trích frame từ video nếu cần để tăng số lượng ảnh.
-  - Bổ sung thêm ảnh từ internet (nếu được) cho phong phú; lưu vào `data/raw/`.
-  - Mục tiêu: tối thiểu 300–500 ảnh có chứa biển số VN rõ ràng.
-- **Gán nhãn detection**:
-  - Dùng LabelImg/Roboflow để vẽ bounding box quanh biển số, class duy nhất `license_plate`.
-  - Xuất nhãn theo định dạng YOLO (file `.txt` cùng tên ảnh).
-  - Hoàn thành ít nhất ~200 ảnh gán nhãn trong buổi 2.
-- **Tách tập train/val/test sơ bộ**:
-  - Viết script Python để random split, lưu danh sách file vào `data/splits/{train,val,test}.txt`.
+  - Tự chụp ảnh/đoạn video xe máy, ô tô trên đường hoặc trong bãi giữ xe
+  - Trích frame từ video nếu cần để tăng số lượng ảnh
+  - Mục tiêu: tối thiểu 300–500 ảnh có chứa biển số VN rõ ràng
+
+- **Gán nhãn detection (YOLO)**:
+  - Dùng LabelImg/Roboflow để vẽ bounding box quanh biển số
+  - Xuất nhãn theo định dạng YOLO (file `.txt` cùng tên ảnh)
+  - Hoàn thành ít nhất ~200 ảnh gán nhãn trong buổi 2
+
+- **Gán nhãn OCR cho Qwen2-VL**:
+  - Chuẩn bị manifest CSV: `image_id`, `image_path`, `text_gt`
+  - Tạo thư mục `data/crops/` chứa ảnh crop biển số đã detect
+  - Mục tiêu: ít nhất 100-200 cặp crop-GT cho fine-tuning
+
+- **Tách tập train/val/test**:
+  - Viết script split, lưu vào `data/splits/{train,val,test}.txt`
+
 - **EDA & tiền xử lý**:
-  - Notebook nhỏ đọc danh sách ảnh + nhãn, hiển thị vài sample kèm box để kiểm tra.
-  - Thống kê: số ảnh, số biển/ảnh, kích thước box trung bình, phân bố điều kiện ánh sáng (tự gắn tag đơn giản nếu có).
-  - Viết hàm tiền xử lý ảnh chung: resize, normalize, augment (brightness, contrast, small rotation) → sử dụng sau này khi train YOLO.
+  - Notebook đọc danh sách ảnh + nhãn, hiển thị sample kèm box
+  - Thống kê: số ảnh, kích thước box trung bình, phân bố điều kiện ánh sáng
+  - Hàm tiền xử lý: resize, normalize, augment (brightness, contrast, small rotation)
 
 **Deliverables**
 
-- Thư mục dữ liệu đã tổ chức rõ ràng, có nhãn cho ≥ 200 ảnh.
-- Notebook/Script EDA hiển thị thống kê + vài ảnh mẫu.
-- Script tiền xử lý/augment cơ bản chạy được.
-- Tai lieu trien khai chi tiet + checklist + script khung: `reports/buoi-2-thu-thap-va-tien-xu-ly-du-lieu-chi-tiet.md`.
+- Thư mục dữ liệu đã tổ chức, có nhãn cho ≥ 200 ảnh (detection)
+- Manifest OCR: ≥ 100 cặp crop-GT trong `data/manifests/ocr_training.csv`
+- Notebook/Script EDA
+- Script tiền xử lý/augment cơ bản
+- Tài liệu: `reports/buoi-2-thu-thap-va-tien-xu-ly-du-lieu-chi-tiet.md`
 
 ## Buổi 3 – Xây dựng mô hình baseline (Detection)
 
-**Mục tiêu**: Train được mô hình YOLO baseline với dữ liệu hiện có và chạy inference được.
+**Mục tiêu**: Train được mô hình YOLO baseline và chạy inference được.
 
 **Việc cần làm**
 
 - Chuẩn bị **file cấu hình YOLO**:
-  - `data.yaml`: đường dẫn tới image/label train/val, khai báo class `license_plate`.
-  - Kiểm tra lại cấu trúc thư mục đúng như YOLO yêu cầu.
-- Cài đặt & cấu hình môi trường YOLO (Ultralytics) trong Python env.
-- Viết/điều chỉnh script train baseline:
-  - Chọn model nhỏ (YOLOv8n/yolov5s) để train nhanh.
-  - Thiết lập hyperparameter mặc định: epochs ~50, batch size tùy GPU, image size 640.
-  - Dùng augment cơ bản đã chuẩn bị.
-- Chạy huấn luyện trên tập train/val:
-  - Ghi lại log loss, precision, recall, mAP trong vài epoch đầu; lưu checkpoint tốt nhất vào `experiments/`.
-- Thử **inference** trên một số ảnh trong tập test hoặc ảnh mới:
-  - Viết script nhận đường dẫn ảnh → vẽ bounding box biển số ra file/hiển thị.
-  - Quan sát lỗi: biển nhỏ không detect được, detect nhầm background, nhầm biển nền vàng/trắng, v.v.
+  - `data.yaml`: đường dẫn tới image/label train/val, class `license_plate`
+  - Kiểm tra cấu trúc thư mục đúng YOLO yêu cầu
+
+- Cài đặt & cấu hình môi trường YOLO (Ultralytics)
+
+- Train baseline:
+  - Model nhỏ: YOLOv8n (nano) để train nhanh
+  - Hyperparameter mặc định: epochs ~50, batch size tùy GPU, image size 640
+
+- Inference trên tập test:
+  - Script nhận đường dẫn ảnh → vẽ bounding box ra file/hiển thị
+  - Quan sát lỗi: biển nhỏ không detect, detect nhầm background
 
 **Deliverables**
 
-- Checkpoint mô hình YOLO baseline.
-- Script hoặc notebook train + inference.
-- Ảnh minh họa kết quả detect (đúng/sai) để dùng sau này trong báo cáo.
+- Checkpoint YOLO baseline: `runs/detect/experiments/detector/yolov8n_augmented/weights/best.pt`
+  - mAP50: **0.9471** (epoch 22), mAP50-95: **0.6382**
+  - Dataset: 279 train + 31 val augmented images
+- Script train + inference
+- Ảnh minh họa kết quả detect (đúng/sai)
 
-## Buổi 4 – Cải tiến mô hình & Thực nghiệm (DeepSolo + TrOCR)
+## Buổi 4 – Fine-tune Qwen2-VL-2B-Instruct với Unsloth + QLoRA
 
-**Mục tiêu**: Thử **đúng 2 cấu hình** so sánh công bằng trên cùng tập test, đánh giá bằng **CER / WER / plate-level accuracy** (và tùy chọn latency), rồi chốt pipeline cho Buổi 5–6.
+**Mục tiêu**: Fine-tune Qwen2-VL-2B-Instruct sử dụng Unsloth để tối ưu VRAM/tốc độ, lưu checkpoint lên Hugging Face.
 
-**Hai cấu hình bắt buộc**
+**Công nghệ sử dụng**
 
-1. **Cấu hình A – DeepSolo end-to-end**  
-   Text spotting một mô hình: đầu vào ảnh/frame, đầu ra polygon/bbox + chuỗi biển số. Tham khảo repo [DeepSolo](https://github.com/ViTAE-Transformer/DeepSolo).
-
-2. **Cấu hình B – DeepSolo + TrOCR (2-stage)**  
-   Giai đoạn 1: DeepSolo chỉ để localize vùng biển (hoặc spotting rồi lấy crop). Giai đoạn 2: crop → tiền xử lý → **TrOCR** đọc ký tự. Tham khảo [TrOCR (Transformers)](https://huggingface.co/docs/transformers/model_doc/trocr).
+| Thành phần | Tool |
+|------------|------|
+| Base Model | Qwen2-VL-2B-Instruct |
+| Fine-tuning Framework | Unsloth |
+| Quantization | QLoRA (4-bit) |
+| Platform | Google Colab (GPU T4/A100) |
+| Storage | Hugging Face Hub |
 
 **Việc cần làm**
 
-- **Dữ liệu thống nhất**
-  - Chuẩn hóa transcript GT (uppercase, bỏ khoảng trắng thừa hoặc giữ một format cố định).
-  - Giữ nguyên split `train/val/test` (không trộn cùng cảnh giữa train và test).
-  - Manifest tối thiểu: `image_id`, `polygon hoặc bbox`, `text_gt` (JSONL hoặc CSV).
+- **Chuẩn bị dữ liệu fine-tuning**:
+  - Format conversation cho Qwen2-VL:
+    ```
+    messages = [
+      {"role": "user", "content": [{"type": "image"}, "Đọc biển số xe trong ảnh"]},
+      {"role": "assistant", "content": "30G1-12345"}
+    ]
+    ```
+  - Tạo JSONL file cho training
+  - Tối thiểu 100-200 cặp crop-GT
 
-- **Cấu hình A**
-  - Convert nhãn sang format text spotting mà DeepSolo yêu cầu (polygon + text).
-  - Train 1 run, lưu `best` / `last`.
-  - Inference: xuất `text_pred`, `score`, polygon.
+- **Cấu hình Unsloth + QLoRA**:
+  - 4-bit quantization với NF4
+  - LoRA config: rank=16, alpha=32, dropout=0.1
+  - Target modules: q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj
+  - Learning rate: 2e-4, epochs: 3-5, batch size: 1-2 (tùy VRAM)
 
-- **Cấu hình B**
-  - Dùng vùng từ DeepSolo → crop/rectify (perspective nếu nghiêng).
-  - Fine-tune hoặc inference TrOCR trên crop; hậu xử lý regex biển số VN.
-  - Lưu kết quả trung gian (ảnh crop, raw OCR) để debug.
+- **Huấn luyện trên Google Colab**:
+  - Cài đặt Unsloth: `pip install unsloth unsloth_granite`
+  - Load model với Unsloth:
+    ```python
+    from unsloth import FastVisionModel
+    model, tokenizer = FastVisionModel.from_pretrained(
+        "Qwen/Qwen2-VL-2B-Instruct",
+        load_in_4bit=True,
+        use_gradient_checkpointing="unsloth"
+    )
+    ```
+  - Apply LoRA:
+    ```python
+    model = FastVisionModel.get_peft_model(
+        model,
+        r=16, lora_alpha=32,
+        target_modules=["q_proj", "k_proj", "v_proj", ...],
+        use_gradient_checkpointing="unsloth"
+    )
+    ```
+  - Train và theo dõi loss
+  - Lưu checkpoint tốt nhất
 
-- **Đánh giá (cùng test set cho A và B)**
-  - **CER**: tổng khoảng cách chỉnh sửa ký tự / tổng số ký tự GT.
-  - **WER**: khoảng cách chỉnh sửa theo từ (token tách bằng khoảng trắng) / số từ GT; với biển số 1 dòng có thể coi cả chuỗi là 1 “từ”.
-  - **Plate-level accuracy**: tỉ lệ mẫu có `normalize(pred) == normalize(gt)` (khớp hoàn toàn sau chuẩn hóa).
-  - (Tùy chọn) thời gian suy luận trung bình / frame trên CPU hoặc GPU.
+- **Đẩy lên Hugging Face**:
+  - Push adapter đã fine-tune:
+    ```python
+    model.push_to_hub_LoRA("username/vn-plate-qwen2-vl-2b")
+    ```
+  - Hoặc push full model nếu cần
 
-- **Phân tích lỗi**
-  - Phân loại: detect/spotting sai; đúng vùng nhưng OCR sai; đúng sau hậu xử lý.
-  - Lưu 10–20 ảnh lỗi tiêu biểu kèm GT vs pred.
-
-- **Baseline YOLO (tùy chọn, không thay thế 2 cấu hình trên)**  
-  Nếu cần so sánh nhanh với Buổi 3: có thể chạy thêm `python -m src.detector.run_buoi4_experiments` — chỉ là tham chiếu, không tính là một trong hai cấu hình chính của Buổi 4.
+- **Test inference cơ bản**:
+  - Chạy inference trên vài ảnh test bằng model đã fine-tune
+  - So sánh với baseline (model chưa fine-tune)
 
 **Deliverables**
 
-- Hai run thực nghiệm hoàn chỉnh (A/B) + log và checkpoint theo từng repo/convention.
-- Bảng so sánh: CER, WER, plate-level accuracy, (latency).
-- Tài liệu thao tác chi tiết: [`reports/buoi-4-cai-tien-mo-hinh-va-thuc-nghiem-chi-tiet.md`](reports/buoi-4-cai-tien-mo-hinh-va-thuc-nghiem-chi-tiet.md).
-- Notebook hoặc [`reports/ablation_deepsolo_trocr.md`](reports/ablation_deepsolo_trocr.md) tóm tắt A/B và quyết định pipeline cho Buổi 5.
-- Code hỗ trợ trong repo: [`src/eval/metrics_plate.py`](src/eval/metrics_plate.py), script so sánh A/B [`scripts/run_buoi4_experiments.py`](scripts/run_buoi4_experiments.py), khung pipeline [`src/pipeline/infer_plate_pipeline.py`](src/pipeline/infer_plate_pipeline.py), hướng dẫn cấu hình [`configs/deepsolo/README.md`](configs/deepsolo/README.md), [`configs/trocr/README.md`](configs/trocr/README.md).
+- Checkpoint Qwen2-VL-2B fine-tuned trên Hugging Face: `username/vn-plate-qwen2-vl-2b`
+- Script fine-tuning (chạy được trên Colab): `scripts/train_qwen_colab.ipynb`
+- Log training: loss curve, sample outputs
+- So sánh baseline vs fine-tuned: vài ví dụ input/output
+- Tài liệu: `reports/buoi-4-finetune-qwen2vl-voi-unsloth-chi-tiet.md`
 
-## Buổi 5 – Tích hợp OCR & Đánh giá toàn hệ thống
+## Buổi 5 – Tích hợp Pipeline & Đánh giá toàn hệ thống
 
-**Mục tiêu**: Hoàn thiện pipeline nhận diện biển số end-to-end dựa trên kết luận Buổi 4, ưu tiên **DeepSolo localize + TrOCR OCR** vì cấu hình này đang cho plate accuracy cao hơn trong smoke-test. Đánh giá lại trên **≥ 200 ảnh thực tế** bằng **CER, WER, plate-level accuracy và latency**, đồng thời giữ YOLO/EasyOCR hoặc YOLO/TrOCR làm baseline dự phòng nếu DeepSolo chưa ổn định.
-
-**Căn cứ từ Buổi 4**
-
-- Kết quả demo/smoke-test Buổi 4:
-  - Cấu hình A – DeepSolo end-to-end: CER `0.0469`, WER `0.3750`, plate accuracy `0.6250`, latency trung bình `83.75 ms`.
-  - Cấu hình B – DeepSolo + TrOCR: CER `0.0156`, WER `0.1250`, plate accuracy `0.8750`, latency trung bình `145.925 ms`.
-- Quyết định tạm thời: chọn **cấu hình B** làm pipeline chính cho Buổi 5 vì đọc đúng toàn biển tốt hơn, dù chậm hơn.
-- Hướng cải thiện ưu tiên: **crop/rectify vùng biển**, chuẩn hóa đầu vào TrOCR, hậu xử lý regex biển số VN, rồi mới tính đến fine-tune TrOCR.
-- Lưu ý quan trọng: số liệu Buổi 4 hiện là dữ liệu demo/smoke-test, nên Buổi 5 phải chạy lại trên test set thật, cố định và đủ lớn.
+**Mục tiêu**: Hoàn thiện pipeline YOLOv8n + Qwen2-VL-2B, đánh giá trên ≥ 200 ảnh thực tế.
 
 **Việc cần làm**
 
-- **Chốt data contract cho đánh giá**
-  - Tạo/kiểm tra manifest test cố định, tối thiểu gồm: `image_id`, `image_path`, `text_gt`, `bbox_gt` hoặc `polygon_gt` nếu có, `split=test`.
-  - Đảm bảo test set có ≥ 200 ảnh thực tế, không trùng cảnh/khung hình gần giống với train/val.
-  - Chuẩn hóa ground truth trước khi chấm: uppercase, bỏ ký tự phân cách không nhất quán, thống nhất cách ghi biển 1 dòng/2 dòng.
-  - Lưu manifest ở `data/manifests/buoi5_test.csv` hoặc đường dẫn tương đương; không hard-code đường dẫn máy cá nhân.
+- **Chốt data contract cho đánh giá**:
+  - Tạo/kiểm tra manifest test cố định: `image_id`, `image_path`, `text_gt`
+  - Test set ≥ 200 ảnh thực tế, không trùng cảnh với train/val
+  - Lưu manifest ở `data/manifests/buoi5_test.csv`
 
-- **Tuyến chính: DeepSolo localize + TrOCR**
-  - Dùng DeepSolo để lấy vùng biển số hoặc polygon text tốt nhất trên ảnh gốc.
-  - Nếu DeepSolo trả nhiều vùng, chọn vùng phù hợp bằng score, diện tích, tỉ lệ khung và vị trí hợp lý trong ảnh.
-  - Crop vùng biển từ bbox/polygon; nếu có polygon nghiêng thì ưu tiên perspective transform trước khi OCR.
-  - Đưa crop qua TrOCR bằng adapter `src/ocr/trocr_adapter.py`; lưu cả `text_raw`, `text_norm`, `ocr_score` để debug.
-  - Gắn pipeline vào `src/pipeline/infer_plate_pipeline.py` theo luồng: input frame → localize → crop/rectify → preprocess → OCR → postprocess → output JSON/CSV.
+- **Tích hợp pipeline YOLOv8n + Qwen2-VL**:
+  - Load YOLO detector từ checkpoint Buổi 3
+  - Load Qwen2-VL fine-tuned từ Hugging Face (Buổi 4)
+  - Pipeline flow: frame → detect → crop → Qwen2-VL OCR → postprocess
 
-- **Tiền xử lý crop trước OCR**
-  - Chuẩn hóa kích thước crop, giữ tỉ lệ để không làm méo ký tự.
-  - Thử các biến thể nhẹ: RGB/BGR đúng định dạng cho TrOCR, tăng tương phản, denoise nhẹ, padding quanh biển, deskew/perspective khi biển nghiêng.
-  - Không lạm dụng threshold nhị phân nếu dùng TrOCR, vì mô hình transformer thường cần ảnh crop còn đủ thông tin nét/chất liệu; threshold chỉ dùng như ablation riêng hoặc cho EasyOCR/Tesseract.
-  - Lưu 20–30 crop trung gian vào `outputs/buoi5/crops/` để kiểm tra bằng mắt.
+- **Tiền xử lý crop trước OCR**:
+  - Chuẩn hóa kích thước crop (resize về 224x224 hoặc giữ tỉ lệ)
+  - Tăng tương phản nhẹ, denoise nếu cần
 
-- **Hậu xử lý biển số Việt Nam**
-  - Dùng `src/postprocess/plate_rules.py` để normalize: uppercase, bỏ ký tự lạ, chuẩn hóa khoảng trắng/dấu gạch.
-  - Áp dụng sửa lỗi OCR thường gặp theo ngữ cảnh: `O ↔ 0`, `I/L ↔ 1`, `S ↔ 5`, `B ↔ 8` ở vị trí số/chữ phù hợp.
-  - Viết rõ regex/luật cho một số mẫu phổ biến: xe máy 2 dòng, ô tô 1 dòng, biển nền vàng/trắng/xanh nếu dữ liệu có.
-  - Lưu cả `pred_raw` và `pred_norm` để chứng minh hậu xử lý cải thiện hay làm sai.
+- **Hậu xử lý biển số VN**:
+  - Regex chuẩn hóa: uppercase, bỏ ký tự lạ
+  - Sửa lỗi OCR thường gặp: O↔0, I/L↔1
+  - Luật format biển số VN: xe máy 2 dòng, ô tô 1 dòng
 
-- **Baseline dự phòng để so sánh**
-  - Chạy lại YOLOv8 + TrOCR bằng `scripts/run_infer.py` nếu checkpoint YOLO từ Buổi 3 ổn định.
-  - Chạy YOLOv8 + EasyOCR nếu cần baseline nhanh, dễ demo, ít phụ thuộc model ngoài.
-  - Không để baseline thay thế tuyến chính Buổi 5, trừ khi DeepSolo không chạy được trên test thật; nếu đổi hướng phải ghi rõ lý do trong báo cáo.
+- **Chạy inference batch**:
+  - Đầu ra CSV: `image_id`, `gt`, `pred_raw`, `pred_norm`, `bbox`, `latency_ms`, `error_type`
+  - Lưu vào `outputs/buoi5/predictions.csv`
 
-- **Chạy inference batch và xuất prediction**
-  - Đầu ra bắt buộc dạng CSV/JSON có các trường: `image_id`, `gt`, `pred_raw`, `pred_norm`, `bbox_xyxy` hoặc `polygon`, `det_score`, `ocr_score`, `latency_ms`, `error_type`.
-  - Với pipeline hiện có, có thể dùng hướng lệnh:
-    - `python scripts/run_infer.py --input-dir data/raw --output-json outputs/buoi5/predictions_trocr.json --detector-backend yolov8 --detector-model weights/yolov8_license_plate.pt --ocr-backend trocr --device cpu`
-    - `python scripts/eval_pipeline.py --pred-csv outputs/buoi5/pred_vs_gt.csv --report-json reports/buoi5_metrics.json --errors-csv reports/buoi5_error_records.csv`
-  - Nếu DeepSolo chạy ngoài repo chính, export prediction về cùng schema CSV để dùng chung script metric.
+- **Đánh giá định lượng**:
+  - **CER**: tổng edit distance ký tự / tổng ký tự GT
+  - **WER**: edit distance token / tổng token GT
+  - **Plate-level accuracy**: tỉ lệ pred_norm == gt sau chuẩn hóa
+  - **Mean latency ms**: thời gian trung bình cho detect + OCR + postprocess
 
-- **Đánh giá định lượng**
-  - Metric chính:
-    - **CER**: tổng edit distance theo ký tự / tổng ký tự GT.
-    - **WER**: edit distance theo token / tổng token GT; với biển 1 chuỗi có thể coi cả biển là 1 token.
-    - **Plate-level accuracy**: `normalize(pred) == normalize(gt)`.
-    - **Mean latency ms**: thời gian trung bình cho detect/localize + preprocess + OCR + postprocess.
-  - Báo cáo thêm nếu có thời gian: detection hit rate, tỉ lệ crop hợp lệ, accuracy trước/sau hậu xử lý, phân bố lỗi theo loại biển/điều kiện ảnh.
-  - So sánh ít nhất 2 dòng kết quả: pipeline chính DeepSolo + TrOCR và baseline dự phòng tốt nhất.
-
-- **Phân tích lỗi có hệ thống**
-  - Gán nhãn lỗi cho từng case sai:
-    - `detect_miss`: không tìm thấy biển.
-    - `bad_crop`: tìm đúng vùng nhưng crop cắt mất ký tự hoặc quá nhiều nền.
-    - `rectify_error`: biển nghiêng/perspective làm OCR sai.
-    - `ocr_error`: crop đúng nhưng TrOCR đọc sai ký tự.
-    - `postprocess_helped`: OCR raw sai nhẹ nhưng rule sửa đúng.
-    - `postprocess_hurt`: rule sửa làm sai kết quả vốn đúng/gần đúng.
-    - `ambiguous_gt`: ảnh mờ hoặc GT không chắc chắn.
-  - Lưu 10–20 hard cases tiêu biểu gồm ảnh gốc, crop, GT, prediction, loại lỗi và ghi chú nguyên nhân.
-  - Từ error analysis, chọn 2–3 cải tiến nhỏ để làm ngay trước Buổi 6: tăng padding crop, lọc bbox sai, sửa regex, hoặc chọn model TrOCR khác.
-
-- **Kiểm thử nhanh và chất lượng mã**
-  - Kiểm tra các hàm metric trong `src/eval/metrics_plate.py` bằng vài case tự tạo: đúng hoàn toàn, sai 1 ký tự, rỗng prediction, khác format khoảng trắng.
-  - Kiểm tra pipeline không crash khi ảnh không có biển, OCR trả chuỗi rỗng, detector trả nhiều bbox.
-  - Log latency theo stage để biết Buổi 6 cần tối ưu phần nào.
-  - Giữ logic tái sử dụng trong `src/`; notebook chỉ dùng để minh họa kết quả và báo cáo.
+- **Phân tích lỗi có hệ thống**:
+  - Phân loại lỗi: detect_miss, bad_crop, ocr_error, postprocess_helped, ambiguous_gt
+  - Lưu 10-20 hard cases tiêu biểu vào `outputs/buoi5/hard_cases/`
 
 **Deliverables**
 
-- Pipeline end-to-end chạy được trên ≥ 200 ảnh test thật, ưu tiên cấu hình **DeepSolo + TrOCR**.
-- File prediction chuẩn hóa: `outputs/buoi5/pred_vs_gt.csv` hoặc JSON tương đương.
-- Báo cáo metric: `reports/buoi5_metrics.json` kèm bảng CER, WER, plate accuracy, latency.
-- File lỗi chi tiết: `reports/buoi5_error_records.csv` có `error_type` để làm error analysis.
-- Thư mục hard cases: `outputs/buoi5/hard_cases/` gồm ảnh gốc/crop và ghi chú GT vs prediction.
-- Tài liệu ngắn `reports/buoi-5-tich-hop-ocr-va-danh-gia-toan-he-thong.md` tóm tắt pipeline đã chọn, lệnh chạy, kết quả, lỗi chính và việc cần làm cho Buổi 6.
-- Notebook học và xem kết quả: `docs/buoi-5-tich-hop-ocr-va-danh-gia-toan-he-thong.ipynb`.
-- Checklist quyết định cuối buổi:
-  - [ ] Test set ≥ 200 ảnh đã cố định.
-  - [ ] Pipeline chính DeepSolo + TrOCR chạy hết test set.
-  - [ ] Có ít nhất một baseline dự phòng để so sánh.
-  - [ ] Có CER/WER/plate accuracy/latency.
-  - [ ] Có 10–20 hard cases đã phân loại lỗi.
-  - [ ] Chốt cấu hình dùng cho demo Buổi 6.
+- Pipeline end-to-end chạy được trên ≥ 200 ảnh test
+- File prediction: `outputs/buoi5/predictions.csv`
+- Báo cáo metric: `reports/buoi5_metrics.json` (CER, WER, plate accuracy, latency)
+- File lỗi chi tiết: `reports/buoi5_error_records.csv`
+- Thư mục hard cases: `outputs/buoi5/hard_cases/`
+- Checklist quyết định:
+  - [ ] Test set ≥ 200 ảnh đã cố định
+  - [ ] Pipeline YOLOv8n + Qwen2-VL chạy hết test set
+  - [ ] Có CER/WER/plate accuracy/latency
+  - [ ] Có 10-20 hard cases đã phân loại lỗi
 
 ## Buổi 6 – Demo & Giao diện người dùng
 
-**Mục tiêu**: Có demo trực quan, chạy được với dữ liệu thực, tương tác đơn giản.
+**Mục tiêu**: Demo trực quan chạy được với dữ liệu thực, giao diện đơn giản với Streamlit.
 
 **Việc cần làm**
 
-- Thiết kế demo:
-  - Chọn 1 trong 3 kiểu: script CLI, web nhẹ (Streamlit/Gradio), hoặc app OpenCV GUI.
-  - Chức năng cơ bản:
-    - Chọn ảnh/video file → hiển thị kết quả detect + text biển số.
-    - Hoặc chế độ webcam: hiển thị realtime với bbox và text.
-- Tối ưu tối thiểu để demo mượt:
-  - Có thể xử lý 1/2 hoặc 1/3 số frame cho video.
-  - Cache kết quả khi biển số cùng ID tracking (nếu có time làm tracking đơn giản).
-- Kiểm thử demo với các video/ảnh thực tế:
-  - Quay 1–2 video ngắn ngoài thực tế (bãi xe/đường) để trình chiếu.
-  - Ghi nhận crash, độ trễ, trường hợp đọc sai nghiêm trọng và sửa nếu kịp.
-- Chuẩn bị **bộ case minh hoạ** cho buổi bảo vệ:
-  - Vài ảnh “đẹp” (đọc đúng hoàn toàn).
-  - Vài ảnh “khó” (đọc gần đúng hoặc sai) để minh hoạ giới hạn hệ thống.
+- Thiết kế demo Streamlit:
+  - Upload ảnh/video → hiển thị kết quả detect + text biển số
+  - Hoặc chế độ webcam realtime
+  - Hiển thị bbox + plate text overlay
+
+- Tối ưu cho demo mượt:
+  - Xử lý 1/2 hoặc 1/3 số frame cho video
+  - Cache kết quả khi biển số cùng ID tracking
+
+- Kiểm thử demo với video/ảnh thực tế:
+  - Quay 1-2 video ngoài thực tế để trình chiếu
+  - Ghi nhận crash, độ trễ, trường hợp đọc sai
+
+- Chuẩn bị bộ case minh hoạ cho buổi bảo vệ:
+  - Vài ảnh "đẹp" (đọc đúng hoàn toàn)
+  - Vài ảnh "khó" (đọc gần đúng hoặc sai)
 
 **Deliverables**
 
-- Demo chạy ổn định (script hoặc app).
-- Bộ video/ảnh demo kèm theo hướng dẫn chạy.
+- Demo Streamlit chạy ổn định
+- Bộ video/ảnh demo kèm hướng dẫn chạy
+- Tài liệu: `reports/buoi-6-demo-va-giao-dien-nguoi-dung.md`
 
 ## Buổi 7 – Báo cáo & Bảo vệ
 
@@ -388,23 +411,59 @@ isProject: false
 
 **Việc cần làm**
 
-- Viết **báo cáo chính thức** (theo mẫu môn học, ≥ 15 trang):
-  - Giới thiệu, bài toán & ứng dụng.
-  - Cơ sở lý thuyết: YOLO, OCR, tiền xử lý ảnh, format biển số VN.
-  - Dữ liệu & phương pháp: cách thu thập/gán nhãn, kiến trúc pipeline, chi tiết mô hình.
-  - Thực nghiệm & kết quả: mAP, character/plate accuracy, bảng so sánh, error analysis.
-  - Demo & ứng dụng thực tế, hạn chế, hướng phát triển.
+- Viết **báo cáo chính thức** (≥ 15 trang):
+  - Giới thiệu, bài toán & ứng dụng
+  - Cơ sở lý thuyết: YOLOv8, Qwen2-VL, Unsloth, QLoRA
+  - Dữ liệu & phương pháp: thu thập/gán nhãn, kiến trúc pipeline, chi tiết fine-tuning
+  - Thực nghiệm & kết quả: mAP, CER/WER/plate accuracy, bảng so sánh, error analysis
+  - Demo & ứng dụng thực tế, hạn chế, hướng phát triển
+
 - Chuẩn bị **slide trình bày**:
-  - 15–20 slide tóm tắt các ý chính, nhiều hình minh họa (pipeline, ví dụ input/output, biểu đồ kết quả).
+  - 15-20 slide tóm tắt ý chính
+  - Nhiều hình minh họa (pipeline, ví dụ input/output, biểu đồ kết quả)
+
 - Diễn tập bảo vệ:
-  - 1–2 lần chạy thử: trình bày slide + chạy demo live.
-  - Liệt kê các câu hỏi giảng viên có thể hỏi (về dữ liệu, độ chính xác, vì sao chọn YOLO, giới hạn hệ thống, cách cải thiện) và chuẩn bị câu trả lời.
+  - Chạy thử: trình bày slide + demo live
+  - Chuẩn bị câu trả lời cho câu hỏi giảng viên
+
 - Đóng gói **mã nguồn + dữ liệu mẫu + hướng dẫn chạy**:
-  - README.md mô tả cách cài đặt, chạy train/inference/demo.
-  - Nén project theo yêu cầu môn học.
+  - README.md mô tả cách cài đặt, chạy train/inference/demo
+  - Nén project theo yêu cầu nộp
 
 **Deliverables**
 
-- Báo cáo viết hoàn chỉnh.
-- Slide trình bày.
-- Bộ mã nguồn + demo đã kiểm tra chạy được trên máy đích (hoặc theo yêu cầu nộp).
+- Báo cáo viết hoàn chỉnh
+- Slide trình bày
+- Bộ mã nguồn + demo đã kiểm tra chạy được
+
+## So sánh công nghệ (Trước vs Sau cập nhật)
+
+| Thành phần | Plan cũ | Plan mới |
+|------------|---------|----------|
+| Detection | YOLOv8 / DeepSolo | YOLOv8n |
+| OCR/VLM | TrOCR / DeepSolo | Qwen2-VL-2B-Instruct |
+| Fine-tuning | TrOCR fine-tune | Qwen2-VL fine-tune với Unsloth |
+| Optimization | - | QLoRA (4-bit), Unsloth |
+| Môi trường | Local | Google Colab + Hugging Face |
+| Buổi 4 | DeepSolo vs DeepSolo+TrOCR | Fine-tune Qwen2-VL với Unsloth |
+
+## Checklist triển khai
+
+### Trước Buổi 4 (Fine-tuning)
+
+- [ ] Có ≥ 100 cặp crop-GT cho Qwen2-VL training
+- [ ] Có tài khoản Hugging Face (để push model)
+- [ ] Có quyền truy cập Google Colab (GPU)
+- [ ] Đã cài đặt Unsloth: `pip install unsloth unsloth_granite`
+
+### Sau Buổi 4
+
+- [ ] Model đã push lên Hugging Face
+- [ ] Có script inference với model fine-tuned
+- [ ] Có log training và sample outputs
+
+### Trước Buổi 5
+
+- [ ] Test set ≥ 200 ảnh đã chuẩn bị
+- [ ] Pipeline YOLOv8n + Qwen2-VL tích hợp xong
+- [ ] Chạy được inference trên batch ảnh

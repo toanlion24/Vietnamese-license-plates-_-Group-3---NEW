@@ -4,7 +4,7 @@ from time import perf_counter
 
 from src.detector.base import PlateDetector
 from src.ocr.base import PlateOcr
-from src.postprocess.plate_rules import normalize_plate_text, postprocess_plate_text
+from src.postprocess.plate_rules import normalize_plate_text, advanced_repair_ocr_text
 from src.preprocess.ops import crop_plate, preprocess_plate
 from src.utils.types import FrameData, PipelineResult
 
@@ -42,9 +42,8 @@ class PlateInferencePipeline:
         plate_crop = crop_plate(frame_data, best_detection, margin_ratio=self.crop_margin_ratio)
         prepared = preprocess_plate(plate_crop.crop, use_clahe=self.preprocess_clahe)
         ocr_out = self.ocr.recognize(plate_crop, prepared)
-        text = postprocess_plate_text(
+        text = advanced_repair_ocr_text(
             ocr_out.text_norm or normalize_plate_text(ocr_out.text_raw),
-            aggressive_tail=self.aggressive_postprocess,
         )
         elapsed = (perf_counter() - start) * 1000.0
 

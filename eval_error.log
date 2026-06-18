@@ -1,0 +1,53 @@
+﻿Manifest: 550 entries | Evaluating: 1
+
+=======================================================
+STEP 1: BASE MODEL (no fine-tuning)
+=======================================================
+[BASE] Loading: Qwen/Qwen2-VL-2B-Instruct
+python : 
+At C:\Users\ToanLion\AppData\Local\Temp\ps-script-d110a46e-d024-4b0a-845b-f8b2e2da2040.ps1:79 char:1
++ python "d:\ComputerVisionNew\scripts\_eval_real.py" --max-samples 1 2 ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]
+Loading checkpoint shards:  50%|#####     | 1/2 [00:15<00:15, 15.77s/it]
+Loading checkpoint shards: 100%|##########| 2/2 [00:18<00:00,  8.28s/it]
+Loading checkpoint shards: 100%|##########| 2/2 [00:18<00:00,  9.40s/it]
+Using a slow image processor as `use_fast` is unset and a slow processor was saved with this model. `use_fast=True` 
+will be the default behavior in v4.52, even if the model was saved with a slow processor. This will result in minor 
+differences in outputs. You'll still be able to use a slow processor with `use_fast=False`.
+[BASE] Ready in 23s. VRAM: 4.43 GB
+
+=== EVAL: BASE MODEL ===
+C:\Users\ToanLion\AppData\Local\Programs\Python\Python311\Lib\site-packages\transformers\generation\configuration_utils
+.py:631: UserWarning: `do_sample` is set to `False`. However, `temperature` is set to `0.01` -- this flag is only used 
+in sample-based generation modes. You should set `do_sample=True` or unset `temperature`.
+  warnings.warn(
+C:\Users\ToanLion\AppData\Local\Programs\Python\Python311\Lib\site-packages\transformers\generation\configuration_utils
+.py:636: UserWarning: `do_sample` is set to `False`. However, `top_p` is set to `0.001` -- this flag is only used in 
+sample-based generation modes. You should set `do_sample=True` or unset `top_p`.
+  warnings.warn(
+C:\Users\ToanLion\AppData\Local\Programs\Python\Python311\Lib\site-packages\transformers\generation\configuration_utils
+.py:653: UserWarning: `do_sample` is set to `False`. However, `top_k` is set to `1` -- this flag is only used in 
+sample-based generation modes. You should set `do_sample=True` or unset `top_k`.
+  warnings.warn(
+RESULT: Acc=0.0% CER=7.2500 Lat=77090.9ms/img
+Sample errors:
+  plate_0001 | GT=51G10096 | PRED=THEIMAGESH0WSAGREENCHEVR01ETVEHIC1EWITHA1ICENSEP1ATENUMBER51G10096 | hallucination
+
+=======================================================
+STEP 2: FINE-TUNED LoRA MODEL
+=======================================================
+[LORA] Loading: Qwen/Qwen2-VL-2B-Instruct
+
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]
+Loading checkpoint shards:  50%|#####     | 1/2 [00:23<00:23, 23.80s/it]
+Loading checkpoint shards: 100%|##########| 2/2 [00:25<00:00, 10.54s/it]
+Loading checkpoint shards: 100%|##########| 2/2 [00:25<00:00, 12.53s/it]
+[LORA] Applying LoRA: d:\ComputerVisionNew\experiments\qwen2vl_crops_lora
+[LORA] LoRA merged
+[LORA] Ready in 36s. VRAM: 4.43 GB
+
+=== EVAL: FINE-TUNED LoRA ===

@@ -1,7 +1,0 @@
-{
-  "num_samples": 10,
-  "cer": 0.0625,
-  "wer": 0.5,
-  "plate_accuracy": 0.5,
-  "mean_latency_ms": 151.35
-}

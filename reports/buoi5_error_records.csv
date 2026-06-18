@@ -1,6 +1,6 @@
-image_id,gt,pred_raw,pred_norm,latency_ms,error_type
-demo_002,51F67890,51F6789O,51F6789O,151.8,ocr_error
-demo_004,43C55667,43C55S67,43C55S67,160.5,ocr_error
-demo_006,15D23456,I5D23456,I5D23456,166.1,ocr_error
-demo_008,37H24680,37H2468O,37H2468O,149.7,ocr_error
-demo_010,30L54321,30L5432,30L5432,158.6,ocr_length_error
+image_id,gt,pred_raw,pred_norm,pred,latency_ms,error_type,is_valid_plate
+demo_002,51F67890,51F6789O,51F6789O,51F6789O,151.8,ocr_error,0
+demo_004,43C55667,43C55S67,43C55S67,43C55S67,160.5,ocr_error,0
+demo_006,15D23456,I5D23456,I5D23456,I5D23456,166.1,ocr_error,0
+demo_008,37H24680,37H2468O,37H2468O,37H2468O,149.7,ocr_error,0
+demo_010,30L54321,30L5432,30L5432,30L5432,158.6,ocr_length_error,1

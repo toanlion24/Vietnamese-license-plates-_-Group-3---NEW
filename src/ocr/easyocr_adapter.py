@@ -1,33 +1,48 @@
-from __future__ import annotations
-
-from src.postprocess.plate_rules import normalize_plate_text
+"""EasyOCR adapter for Vietnamese plates."""
+import time
+import numpy as np
+import easyocr
 from src.utils.types import OcrResult, PlateCrop
-
-try:
-    import easyocr
-except ImportError:  # pragma: no cover
-    easyocr = None  # type: ignore[assignment]
 
 
 class EasyOcrAdapter:
-    def __init__(self, languages: list[str] | None = None, gpu: bool = False) -> None:
-        if easyocr is None:
-            raise ImportError("easyocr is required. Install with: pip install easyocr")
-        self.reader = easyocr.Reader(languages or ["en"], gpu=gpu)
-
-    def recognize(self, plate_crop: PlateCrop, preprocessed) -> OcrResult:  # noqa: ANN001
-        results = self.reader.readtext(preprocessed, detail=1)
-        if not results:
-            text_raw = ""
-            score = 0.0
-        else:
-            # (bbox, text, conf)
-            _, text_raw, score = max(results, key=lambda item: float(item[2]))
-            score = float(score)
+    """Fast CPU-based OCR using EasyOCR for Vietnamese license plates."""
+    
+    def __init__(self, lang_list: list[str] = None, use_gpu: bool = False):
+        if lang_list is None:
+            lang_list = ["en", "vi"]
+        self.reader = easyocr.Reader(lang_list, gpu=use_gpu, verbose=False)
+    
+    def recognize(self, plate_crop: PlateCrop, preprocessed: np.ndarray = None) -> OcrResult:
+        """Run OCR on plate crop."""
+        img = preprocessed if preprocessed is not None else plate_crop.crop
+        
+        # Run EasyOCR
+        results = self.reader.readtext(img)
+        
+        # Extract text
+        if results:
+            # Combine all detected text
+            texts = []
+            for bbox, text, score in results:
+                if text.strip():
+                    texts.append((text.strip(), score))
+            
+            if texts:
+                # Sort by position (left to right)
+                full_text = "".join([t[0] for t in texts])
+                avg_score = np.mean([t[1] for t in texts])
+                
+                return OcrResult(
+                    image_id=plate_crop.image_id,
+                    text_raw=full_text,
+                    text_norm=full_text,
+                    ocr_score=float(avg_score),
+                )
+        
         return OcrResult(
             image_id=plate_crop.image_id,
-            text_raw=text_raw,
-            text_norm=normalize_plate_text(text_raw),
-            ocr_score=score,
+            text_raw="",
+            text_norm="",
+            ocr_score=0.0,
         )
-

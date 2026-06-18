@@ -12,6 +12,7 @@ from src.io.readers import iter_images
 from src.ocr.base import DummyOcr
 from src.ocr.easyocr_adapter import EasyOcrAdapter
 from src.ocr.ensemble_easy_trocr import EasyTrocrEnsembleOcr
+from src.ocr.qwen_adapter import Qwen2VLPlateOcr
 from src.ocr.trocr_adapter import TrOcrAdapter
 from src.pipeline.infer_plate_pipeline import PlateInferencePipeline
 
@@ -40,6 +41,14 @@ def _build_ocr(args: argparse.Namespace):
             cache_dir=str(args.model_cache_dir) if args.model_cache_dir else None,
         )
         return EasyTrocrEnsembleOcr(easy, trocr, aggressive_post=bool(args.aggressive_postprocess))
+    if args.ocr_backend == "qwen2vl":
+        return Qwen2VLPlateOcr(
+            model_name=args.qwen_model_path,
+            device=args.device,
+            cache_dir=str(args.model_cache_dir) if args.model_cache_dir else None,
+            max_new_tokens=int(args.qwen_max_new_tokens),
+            temperature=float(args.qwen_temperature),
+        )
     return TrOcrAdapter(
         model_name=args.trocr_model,
         device=args.device,
@@ -81,7 +90,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--input-dir", type=Path, required=True)
     parser.add_argument("--output-json", type=Path, default=Path("outputs/predictions.json"))
     parser.add_argument("--detector-backend", choices=["yolov8", "dummy"], default="yolov8")
-    parser.add_argument("--detector-model", type=Path, default=Path("weights/yolov8_license_plate.pt"))
+    parser.add_argument("--detector-model", type=Path,
+                       default=Path("experiments/detector/yolov8n_finetune/weights/best.pt"))
     parser.add_argument("--detector-conf", type=float, default=0.25)
     parser.add_argument("--yolo-iou", type=float, default=0.45)
     parser.add_argument("--yolo-imgsz", type=int, default=640)
@@ -90,13 +100,31 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--aggressive-postprocess", action="store_true")
     parser.add_argument(
         "--ocr-backend",
-        choices=["easyocr", "trocr", "dummy", "ensemble_easy_trocr"],
+        choices=["easyocr", "trocr", "dummy", "ensemble_easy_trocr", "qwen2vl"],
         default="easyocr",
     )
     parser.add_argument("--ocr-gpu", action="store_true")
-    parser.add_argument("--trocr-model", type=str, default="microsoft/trocr-base-printed")
+    parser.add_argument("--trocr-model", type=str, default="microsoft/tro_cr-base-printed")
     parser.add_argument("--device", type=str, default="cpu")
     parser.add_argument("--model-cache-dir", type=Path, default=None)
+    parser.add_argument(
+        "--qwen-model-path",
+        type=str,
+        default="experiments/qwen2vl_finetuned",
+        help="Path to Qwen2-VL fine-tuned model (LoRA adapter folder or HuggingFace repo ID)",
+    )
+    parser.add_argument(
+        "--qwen-max-new-tokens",
+        type=int,
+        default=32,
+        help="Max tokens to generate for Qwen2-VL",
+    )
+    parser.add_argument(
+        "--qwen-temperature",
+        type=float,
+        default=0.1,
+        help="Temperature for Qwen2-VL generation (0 = greedy)",
+    )
     parser.add_argument("--max-images", type=int, default=None, help="Limit images for quick demos/debug runs.")
     return parser.parse_args()
 
